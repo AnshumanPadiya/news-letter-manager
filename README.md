@@ -2,6 +2,17 @@
 
 A Chrome extension that helps you take control of your newsletter subscriptions by automatically analyzing, summarizing, and organizing your newsletters using AI.
 
+## 📸 Screenshots
+
+### Main Extension Popup
+![Main Extension Popup](assets/nlm-main-screen.png)
+
+### Settings Page
+![Settings Page](assets/nlm-settings.png)
+
+### Weekly Digest Email
+![Weekly Digest Email](assets/nlm-weekly-digest.png)
+
 ## 🌟 Features
 
 ### 📊 **AI-Powered Newsletter Analysis**
