@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "Newsletter Manager",
+  "version": "1.0.0",
+  "description": "Organize newsletters and get a weekly digest of the best reads.",
+  "permissions": [
+    "identity",
+    "alarms",
+    "storage",
+    "unlimitedStorage"
+  ],
+  "host_permissions": [
+    "https://www.googleapis.com/*"
+  ],
+  "background": {
+    "service_worker": "assets/background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "index.html"
+  },
+  "options_ui": {
+    "page": "index.html#/options",
+    "open_in_tab": true
+  },
+  "oauth2": {
+    "client_id": "915286512166-o9q7fjhupindcg8vbchp7dsq4cjr4bcs.apps.googleusercontent.com",
+    "scopes": [
+      "https://www.googleapis.com/auth/gmail.modify",
+      "https://www.googleapis.com/auth/userinfo.email"
+    ]
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  }
+}
