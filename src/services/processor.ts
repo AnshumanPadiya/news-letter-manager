@@ -1,6 +1,6 @@
 import { GmailClient } from './gmail';
 import { LLMService, type BatchEmailData } from './llm';
-import type { IGmailMessage, IMessagePart } from '../types/gmail';
+import type { IGmailMessage, IMessagePart } from '../types';
 
 export type Category = 'Tech' | 'Offers' | 'News' | 'Finance' | 'Entertainment' | 'Misc';
 

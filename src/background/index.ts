@@ -1,6 +1,5 @@
 import { Scheduler } from './scheduler';
-import { NewsletterProcessor } from '../services/processor';
-import { GmailClient } from '../services/gmail';
+import { NewsletterProcessor, GmailClient, StorageService } from '../services';
 
 console.log('Newsletter Manager Background Service Started');
 
@@ -29,18 +28,68 @@ chrome.alarms.onAlarm.addListener(async (alarm: chrome.alarms.Alarm) => {
 
 // Listen for messages from Popup
 chrome.runtime.onMessage.addListener((message: any, _sender: chrome.runtime.MessageSender, sendResponse: (response?: any) => void) => {
-    if (message.action === 'RUN_JOB_NOW') {
-        // Pass interactive: true when triggered by user
-        runNewsletterJob(true).then(() => sendResponse({ success: true })).catch(err => sendResponse({ success: false, error: err.message }));
-        return true; // Keep channel open for async response
-    }
-    if (message.action === 'GET_NEXT_RUN') {
-        Scheduler.getNextRun().then(time => sendResponse({ time }));
-        return true;
-    }
-    if (message.action === 'CLEANUP_EMAILS') {
-        cleanupEmails().then((count) => sendResponse({ success: true, count })).catch(err => sendResponse({ success: false, error: err.message }));
-        return true;
+    switch (message.action) {
+        case 'RUN_JOB_NOW':
+            runNewsletterJob(true)
+                .then(() => sendResponse({ success: true }))
+                .catch(err => sendResponse({ success: false, error: err.message }));
+            return true;
+
+        case 'GET_NEXT_RUN':
+            Scheduler.getNextRun().then(time => sendResponse({ time }));
+            return true;
+
+        case 'CLEANUP_EMAILS':
+            cleanupEmails()
+                .then((count) => sendResponse({ success: true, count }))
+                .catch(err => sendResponse({ success: false, error: err.message }));
+            return true;
+
+        case 'UNSUBSCRIBE':
+            import('../services/unsubscribe').then(({ UnsubscribeService }) => {
+                UnsubscribeService.unsubscribe(message.id)
+                    .then(success => sendResponse({ success }))
+                    .catch(err => sendResponse({ success: false, error: err.message }));
+            });
+            return true;
+
+        case 'ARCHIVE_NOW':
+            import('../services/archiver').then(({ ArchiverService }) => {
+                ArchiverService.archiveNow(message.id)
+                    .then(success => sendResponse({ success }))
+                    .catch(err => sendResponse({ success: false, error: err.message }));
+            });
+            return true;
+
+        case 'CHECK_ARCHIVE_RULES':
+            import('../services/archiver').then(({ ArchiverService }) => {
+                ArchiverService.checkAndArchive()
+                    .then(count => sendResponse({ success: true, count }))
+                    .catch(err => sendResponse({ success: false, error: err.message }));
+            });
+            return true;
+
+        case 'SEARCH_ARCHIVE':
+            import('../services/storage').then(({ StorageService }) => {
+                StorageService.searchNewsletters(message.query)
+                    .then(results => sendResponse({ results }))
+                    .catch(err => sendResponse({ success: false, error: err.message }));
+            });
+            return true;
+
+        case 'GET_SETTINGS':
+            import('../services/storage').then(({ StorageService }) => {
+                StorageService.getSettings()
+                    .then(settings => sendResponse({ settings }));
+            });
+            return true;
+
+        case 'SAVE_SETTINGS':
+            import('../services/storage').then(({ StorageService }) => {
+                StorageService.saveSettings(message.settings)
+                    .then(() => sendResponse({ success: true }));
+            });
+            return true;
     }
 });
 
@@ -62,7 +111,26 @@ async function runNewsletterJob(interactive: boolean = false) {
         const top10 = scored.slice(0, 10);
         console.log('Top 10 selected:', top10.map(n => n.subject));
 
-        // 3. Generate Digest
+        // 3. Save to Storage for Dashboard
+        const storedNewsletters = top10.map(n => ({
+            id: n.message.id,
+            subject: n.subject,
+            sender: n.sender,
+            summary: n.summary,
+            category: n.category,
+            receivedDate: new Date(parseInt(n.message.internalDate || Date.now().toString())).toISOString(),
+            isArchived: false,
+            importanceScore: n.score
+        }));
+
+        // Import StorageService dynamically if not at top level, or ensure it's imported.
+        // Since we are in an async function and it's a module, dynamic import is fine or top level.
+        // Let's use dynamic import to match the pattern in message listeners, or just add top level import.
+        // Adding top level import is cleaner.
+        await StorageService.saveNewsletters(storedNewsletters);
+        console.log(`Saved ${storedNewsletters.length} newsletters to storage.`);
+
+        // 4. Generate Digest
         const htmlBody = NewsletterProcessor.generateDigestHTML(top10);
         const userProfile = await GmailClient.getProfile(interactive);
 
@@ -81,11 +149,11 @@ async function runNewsletterJob(interactive: boolean = false) {
         const binaryString = Array.from(utf8Bytes, byte => String.fromCharCode(byte)).join('');
         const base64Email = btoa(binaryString).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
-        // 4. Send Email
+        // 5. Send Email
         await GmailClient.sendEmail(base64Email, interactive);
         console.log('Weekly Digest Sent!');
 
-        // 5. Store for Cleanup (Don't delete yet)
+        // 6. Store for Cleanup (Don't delete yet)
         const allIds = newsletters.map(n => n.id);
         const storage = await chrome.storage.local.get(['pendingCleanupIds']);
         const existingIds = (storage.pendingCleanupIds as string[]) || [];

@@ -1,5 +1,5 @@
 import { AuthService } from './auth';
-import type { IGmailMessage, IListMessagesResponse, IUserProfile } from '../types/gmail';
+import type { IGmailMessage, IListMessagesResponse, IUserProfile } from '../types';
 
 const BASE_URL = 'https://gmail.googleapis.com/gmail/v1/users/me';
 
@@ -64,6 +64,13 @@ export class GmailClient {
         await this.fetchWithAuth(`${BASE_URL}/messages/send`, {
             method: 'POST',
             body: JSON.stringify({ raw: base64EncodedEmail }),
+        }, interactive);
+    }
+
+    static async modifyMessage(id: string, modifications: { addLabelIds?: string[], removeLabelIds?: string[] }, interactive: boolean = false): Promise<void> {
+        await this.fetchWithAuth(`${BASE_URL}/messages/${id}/modify`, {
+            method: 'POST',
+            body: JSON.stringify(modifications)
         }, interactive);
     }
 }
