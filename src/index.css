@@ -2,7 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-    width: 450px;
-    min-height: 500px;
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap");
+
+:root {
+  width: 450px;
+  min-height: 650px;
+  font-family: "Inter", sans-serif;
 }
