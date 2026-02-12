@@ -7,7 +7,8 @@
     "identity",
     "alarms",
     "storage",
-    "unlimitedStorage"
+    "unlimitedStorage",
+    "sidePanel"
   ],
   "host_permissions": [
     "https://www.googleapis.com/*"
@@ -17,10 +18,14 @@
     "type": "module"
   },
   "action": {
-    "default_popup": "index.html"
+    "default_popup": "popup.html",
+    "default_title": "Newsletter Manager"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
   },
   "options_ui": {
-    "page": "index.html#/options",
+    "page": "options.html",
     "open_in_tab": true
   },
   "oauth2": {
