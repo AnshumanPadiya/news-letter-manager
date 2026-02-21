@@ -1,5 +1,7 @@
 import { Scheduler } from './scheduler';
 import { NewsletterProcessor, GmailClient, StorageService } from '../services';
+import { UnsubscribeService } from '../services/unsubscribe';
+import { ArchiverService } from '../services/archiver';
 
 console.log('Newsletter Manager Background Service Started');
 
@@ -7,15 +9,6 @@ console.log('Newsletter Manager Background Service Started');
 chrome.runtime.onInstalled.addListener(async () => {
     console.log('Extension installed, setting up default schedule (Sunday 9AM)');
     await Scheduler.createSchedule(0, 9); // Default: Sunday 9 AM
-
-    // Note: First run might fail if not authenticated. 
-    // Ideally we should prompt user to sign in first.
-    // console.log('Triggering First Run immediately...');
-    // try {
-    //     await runNewsletterJob();
-    // } catch (error) {
-    //     console.log('First run failed (likely needs auth):', error);
-    // }
 });
 
 // Listen for Alarms
@@ -46,49 +39,37 @@ chrome.runtime.onMessage.addListener((message: any, _sender: chrome.runtime.Mess
             return true;
 
         case 'UNSUBSCRIBE':
-            import('../services/unsubscribe').then(({ UnsubscribeService }) => {
-                UnsubscribeService.unsubscribe(message.id)
-                    .then(success => sendResponse({ success }))
-                    .catch(err => sendResponse({ success: false, error: err.message }));
-            });
+            UnsubscribeService.unsubscribe(message.id)
+                .then(success => sendResponse({ success }))
+                .catch(err => sendResponse({ success: false, error: err.message }));
             return true;
 
         case 'ARCHIVE_NOW':
-            import('../services/archiver').then(({ ArchiverService }) => {
-                ArchiverService.archiveNow(message.id)
-                    .then(success => sendResponse({ success }))
-                    .catch(err => sendResponse({ success: false, error: err.message }));
-            });
+            ArchiverService.archiveNow(message.id)
+                .then(success => sendResponse({ success }))
+                .catch(err => sendResponse({ success: false, error: err.message }));
             return true;
 
         case 'CHECK_ARCHIVE_RULES':
-            import('../services/archiver').then(({ ArchiverService }) => {
-                ArchiverService.checkAndArchive()
-                    .then(count => sendResponse({ success: true, count }))
-                    .catch(err => sendResponse({ success: false, error: err.message }));
-            });
+            ArchiverService.checkAndArchive()
+                .then(count => sendResponse({ success: true, count }))
+                .catch(err => sendResponse({ success: false, error: err.message }));
             return true;
 
         case 'SEARCH_ARCHIVE':
-            import('../services/storage').then(({ StorageService }) => {
-                StorageService.searchNewsletters(message.query)
-                    .then(results => sendResponse({ results }))
-                    .catch(err => sendResponse({ success: false, error: err.message }));
-            });
+            StorageService.searchNewsletters(message.query)
+                .then(results => sendResponse({ results }))
+                .catch(err => sendResponse({ success: false, error: err.message }));
             return true;
 
         case 'GET_SETTINGS':
-            import('../services/storage').then(({ StorageService }) => {
-                StorageService.getSettings()
-                    .then(settings => sendResponse({ settings }));
-            });
+            StorageService.getSettings()
+                .then(settings => sendResponse({ settings }));
             return true;
 
         case 'SAVE_SETTINGS':
-            import('../services/storage').then(({ StorageService }) => {
-                StorageService.saveSettings(message.settings)
-                    .then(() => sendResponse({ success: true }));
-            });
+            StorageService.saveSettings(message.settings)
+                .then(() => sendResponse({ success: true }));
             return true;
     }
 });
@@ -98,7 +79,7 @@ async function runNewsletterJob(interactive: boolean = false) {
         console.log('Starting Newsletter Job...');
 
         // 1. Fetch Newsletters
-        const newsletters = await NewsletterProcessor.fetchNewsletters(7, interactive);
+        const newsletters = await NewsletterProcessor.fetchNewsletters(7, 50, interactive);
         console.log(`Found ${newsletters.length} newsletters`);
 
         if (newsletters.length === 0) {

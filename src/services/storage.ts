@@ -21,6 +21,10 @@ export interface AppSettings {
     geminiKey?: string;
     archiveSettings: ArchiveSettings;
     customCategories: string[];
+    whitelistedSenders: string[];
+    blacklistedSenders: string[];
+    maxEmailsToScan: number;
+    scanTimeRangeDays: number;
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -28,7 +32,11 @@ const DEFAULT_SETTINGS: AppSettings = {
         enableArchiving: false,
         archiveAfterDays: 30
     },
-    customCategories: []
+    customCategories: [],
+    whitelistedSenders: [],
+    blacklistedSenders: [],
+    maxEmailsToScan: 50,
+    scanTimeRangeDays: 7
 };
 
 export class StorageService {

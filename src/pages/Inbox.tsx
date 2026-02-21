@@ -1,10 +1,90 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Typography, Paper, Button, Chip, Alert, CircularProgress, IconButton, Tooltip } from '@mui/material';
+import { styled } from '@mui/material/styles';
 import UnsubscribeIcon from '@mui/icons-material/Unsubscribe';
 import ArchiveIcon from '@mui/icons-material/Archive';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import type { StoredNewsletter, AppSettings } from '../services';
+
+const PageRoot = styled(Box)`
+    display: flex;
+    flex-direction: column;
+    gap: ${({ theme }) => theme.spacing(2)};
+`;
+
+const PageHeader = styled(Box)`
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+`;
+
+const StatsGrid = styled(Box)`
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: ${({ theme }) => theme.spacing(2)};
+`;
+
+const StatCard = styled(Paper)`
+    padding: ${({ theme }) => theme.spacing(2)};
+`;
+
+const ArchivingAlert = styled(Alert)`
+    font-size: 0.875rem;
+`;
+
+const SectionTitle = styled(Typography)`
+    margin-bottom: ${({ theme }) => theme.spacing(1)};
+    font-weight: 600;
+`;
+
+const EmptyText = styled(Typography)`
+    padding: ${({ theme }) => theme.spacing(4, 0)};
+`;
+
+const NewsletterList = styled(Box)`
+    display: flex;
+    flex-direction: column;
+    gap: ${({ theme }) => theme.spacing(2)};
+`;
+
+const NewsletterCard = styled(Paper)`
+    padding: ${({ theme }) => theme.spacing(2)};
+`;
+
+const CardHeader = styled(Box)`
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: ${({ theme }) => theme.spacing(1)};
+`;
+
+const SubjectText = styled(Typography)`
+    max-width: 70%;
+`;
+
+const CategoryChip = styled(Chip)`
+    height: 20px;
+    font-size: 0.65rem;
+`;
+
+const SummaryText = styled(Typography)`
+    margin-bottom: ${({ theme }) => theme.spacing(2)};
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+`;
+
+const CardActions = styled(Box)`
+    display: flex;
+    gap: ${({ theme }) => theme.spacing(1)};
+    justify-content: flex-end;
+`;
+
+const SmallButton = styled(Button)`
+    font-size: 0.75rem;
+`;
 
 const Inbox: React.FC = () => {
     const [newsletters, setNewsletters] = useState<StoredNewsletter[]>([]);
@@ -68,8 +148,8 @@ const Inbox: React.FC = () => {
     };
 
     return (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <PageRoot>
+            <PageHeader>
                 <Typography variant="h5" component="h1" fontWeight="bold">
                     Inbox
                 </Typography>
@@ -78,33 +158,33 @@ const Inbox: React.FC = () => {
                         <RefreshIcon />
                     </IconButton>
                 </Tooltip>
-            </Box>
+            </PageHeader>
 
             {/* Stats Overview - Compact for Side Panel */}
-            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-                <Paper variant="outlined" sx={{ p: 2 }}>
+            <StatsGrid>
+                <StatCard variant="outlined">
                     <Typography variant="h5" color="primary.main" fontWeight="bold">
                         {stats.total}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
                         Processed
                     </Typography>
-                </Paper>
-                <Paper variant="outlined" sx={{ p: 2 }}>
+                </StatCard>
+                <StatCard variant="outlined">
                     <Typography variant="h5" color="secondary.main" fontWeight="bold">
                         {stats.savedTime}m
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
                         Time Saved
                     </Typography>
-                </Paper>
-            </Box>
+                </StatCard>
+            </StatsGrid>
 
             {/* Archiving Prompt */}
             {settings && !settings.archiveSettings.enableArchiving && (
-                <Alert severity="info" sx={{ fontSize: '0.875rem' }}>
+                <ArchivingAlert severity="info">
                     Enable auto-archiving in Settings to keep inbox clean.
-                </Alert>
+                </ArchivingAlert>
             )}
 
             {/* Actions */}
@@ -120,56 +200,53 @@ const Inbox: React.FC = () => {
 
             {/* Recent Newsletters */}
             <Box>
-                <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 600 }}>
+                <SectionTitle variant="subtitle1">
                     Latest Reads
-                </Typography>
+                </SectionTitle>
 
                 {newsletters.length === 0 ? (
-                    <Typography variant="body2" color="text.secondary" align="center" sx={{ py: 4 }}>
+                    <EmptyText variant="body2" color="text.secondary" align="center">
                         No new newsletters found in Inbox.
-                    </Typography>
+                    </EmptyText>
                 ) : (
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <NewsletterList>
                         {newsletters.slice(0, 10).map(newsletter => (
-                            <Paper key={newsletter.id} variant="outlined" sx={{ p: 2 }}>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                                    <Typography variant="subtitle2" fontWeight="bold" noWrap sx={{ maxWidth: '70%' }}>
+                            <NewsletterCard key={newsletter.id} variant="outlined">
+                                <CardHeader>
+                                    <SubjectText variant="subtitle2" fontWeight="bold" noWrap>
                                         {newsletter.subject}
-                                    </Typography>
-                                    <Chip
+                                    </SubjectText>
+                                    <CategoryChip
                                         label={newsletter.category}
                                         size="small"
-                                        sx={{ height: 20, fontSize: '0.65rem' }}
                                     />
-                                </Box>
-                                <Typography variant="body2" color="text.secondary" sx={{ mb: 2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                                </CardHeader>
+                                <SummaryText variant="body2" color="text.secondary">
                                     {newsletter.summary}
-                                </Typography>
-                                <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-                                    <Button
+                                </SummaryText>
+                                <CardActions>
+                                    <SmallButton
                                         size="small"
                                         startIcon={<UnsubscribeIcon fontSize="small" />}
                                         onClick={() => handleUnsubscribe(newsletter.id)}
                                         color="error"
-                                        sx={{ fontSize: '0.75rem' }}
                                     >
                                         Unsub
-                                    </Button>
-                                    <Button
+                                    </SmallButton>
+                                    <SmallButton
                                         size="small"
                                         startIcon={<ArchiveIcon fontSize="small" />}
                                         onClick={() => handleArchive(newsletter.id)}
-                                        sx={{ fontSize: '0.75rem' }}
                                     >
                                         Archive
-                                    </Button>
-                                </Box>
-                            </Paper>
+                                    </SmallButton>
+                                </CardActions>
+                            </NewsletterCard>
                         ))}
-                    </Box>
+                    </NewsletterList>
                 )}
             </Box>
-        </Box>
+        </PageRoot>
     );
 };
 

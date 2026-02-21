@@ -1,24 +1,79 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Typography, Paper, TextField, InputAdornment, Chip } from '@mui/material';
+import { styled } from '@mui/material/styles';
 import SearchIcon from '@mui/icons-material/Search';
 import type { StoredNewsletter } from '../services';
+
+const PageRoot = styled(Box)`
+    display: flex;
+    flex-direction: column;
+    gap: ${({ theme }) => theme.spacing(3)};
+`;
+
+const StyledSearchField = styled(TextField)`
+    background-color: ${({ theme }) => theme.palette.background.paper};
+    border-radius: ${({ theme }) => theme.spacing(1)};
+
+    & .MuiOutlinedInput-root {
+        color: ${({ theme }) => theme.palette.text.primary};
+    }
+
+    & .MuiOutlinedInput-notchedOutline {
+        border-color: ${({ theme }) => theme.palette.action.disabled};
+    }
+`;
+
+const SearchAdornmentIcon = styled(SearchIcon)`
+    color: ${({ theme }) => theme.palette.text.secondary};
+`;
+
+const FilterRow = styled(Box)`
+    display: flex;
+    gap: ${({ theme }) => theme.spacing(1)};
+    flex-wrap: wrap;
+`;
+
+const FilterChip = styled(Chip)<{ active?: boolean }>`
+    background-color: ${({ active, theme }) =>
+        active ? theme.palette.primary.main : theme.palette.background.paper};
+    color: ${({ active, theme }) =>
+        active ? theme.palette.background.default : theme.palette.text.primary};
+`;
+
+const NewsletterList = styled(Box)`
+    display: flex;
+    flex-direction: column;
+    gap: ${({ theme }) => theme.spacing(2)};
+`;
+
+const NewsletterCard = styled(Paper)`
+    padding: ${({ theme }) => theme.spacing(2)};
+    background-color: ${({ theme }) => theme.palette.background.paper};
+    color: ${({ theme }) => theme.palette.text.primary};
+`;
+
+const CardHeader = styled(Box)`
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: ${({ theme }) => theme.spacing(1)};
+`;
 
 const Archive: React.FC = () => {
     const [newsletters, setNewsletters] = useState<StoredNewsletter[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
-    useEffect(() => {
-        loadArchive();
-    }, [searchQuery]);
-
-    const loadArchive = () => {
+    const loadArchive = React.useCallback(() => {
         chrome.runtime.sendMessage({ action: 'SEARCH_ARCHIVE', query: searchQuery }, (response) => {
             if (response && response.results) {
                 setNewsletters(response.results);
             }
         });
-    };
+    }, [searchQuery]);
+
+    useEffect(() => {
+        loadArchive();
+    }, [loadArchive]);
 
     const filteredNewsletters = newsletters.filter(n =>
         selectedCategory ? n.category === selectedCategory : true
@@ -27,12 +82,12 @@ const Archive: React.FC = () => {
     const categories = Array.from(new Set(newsletters.map(n => n.category)));
 
     return (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+        <PageRoot>
             <Typography variant="h5" color="text.primary">
                 Archive
             </Typography>
 
-            <TextField
+            <StyledSearchField
                 fullWidth
                 placeholder="Search newsletters..."
                 value={searchQuery}
@@ -40,63 +95,51 @@ const Archive: React.FC = () => {
                 InputProps={{
                     startAdornment: (
                         <InputAdornment position="start">
-                            <SearchIcon sx={{ color: 'text.secondary' }} />
+                            <SearchAdornmentIcon />
                         </InputAdornment>
                     ),
                 }}
-                sx={{
-                    bgcolor: 'background.paper',
-                    borderRadius: 1,
-                    '& .MuiOutlinedInput-root': { color: 'text.primary' },
-                    '& .MuiOutlinedInput-notchedOutline': { borderColor: 'action.disabled' }
-                }}
             />
 
-            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                <Chip
+            <FilterRow>
+                <FilterChip
                     label="All"
                     onClick={() => setSelectedCategory(null)}
-                    sx={{
-                        bgcolor: selectedCategory === null ? 'primary.main' : 'background.paper',
-                        color: selectedCategory === null ? 'background.default' : 'text.primary'
-                    }}
+                    active={selectedCategory === null}
                 />
                 {categories.map(cat => (
-                    <Chip
+                    <FilterChip
                         key={cat}
                         label={cat}
                         onClick={() => setSelectedCategory(cat)}
-                        sx={{
-                            bgcolor: selectedCategory === cat ? 'primary.main' : 'background.paper',
-                            color: selectedCategory === cat ? 'background.default' : 'text.primary'
-                        }}
+                        active={selectedCategory === cat}
                     />
                 ))}
-            </Box>
+            </FilterRow>
 
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <NewsletterList>
                 {filteredNewsletters.map(newsletter => (
-                    <Paper key={newsletter.id} sx={{ p: 2, bgcolor: 'background.paper', color: 'text.primary' }}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                    <NewsletterCard key={newsletter.id}>
+                        <CardHeader>
                             <Typography variant="subtitle1" fontWeight="bold">
                                 {newsletter.subject}
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
                                 {new Date(newsletter.receivedDate).toLocaleDateString()}
                             </Typography>
-                        </Box>
+                        </CardHeader>
                         <Typography variant="body2" color="text.secondary">
                             {newsletter.summary}
                         </Typography>
-                    </Paper>
+                    </NewsletterCard>
                 ))}
                 {filteredNewsletters.length === 0 && (
                     <Typography color="text.secondary" align="center">
                         No newsletters found.
                     </Typography>
                 )}
-            </Box>
-        </Box>
+            </NewsletterList>
+        </PageRoot>
     );
 };
 

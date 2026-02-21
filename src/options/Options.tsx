@@ -14,7 +14,42 @@ import {
   IconButton,
   Alert
 } from '@mui/material';
+import { styled } from '@mui/material/styles';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+
+const PageContainer = styled(Container)`
+    padding-top: ${({ theme }) => theme.spacing(4)};
+    padding-bottom: ${({ theme }) => theme.spacing(4)};
+`;
+
+const HeaderRow = styled(Box)`
+    display: flex;
+    align-items: center;
+    margin-bottom: ${({ theme }) => theme.spacing(3)};
+`;
+
+const BackButton = styled(IconButton)`
+    margin-right: ${({ theme }) => theme.spacing(2)};
+`;
+
+const SettingsCard = styled(Paper)`
+    padding: ${({ theme }) => theme.spacing(3)};
+`;
+
+const FormStack = styled(Box)`
+    display: flex;
+    flex-direction: column;
+    gap: ${({ theme }) => theme.spacing(3)};
+    margin-top: ${({ theme }) => theme.spacing(3)};
+`;
+
+const InfoAlert = styled(Alert)`
+    margin-top: ${({ theme }) => theme.spacing(1)};
+`;
+
+const SaveRow = styled(Box)`
+    margin-top: ${({ theme }) => theme.spacing(2)};
+`;
 
 const Options: React.FC = () => {
   const navigate = useNavigate();
@@ -39,26 +74,25 @@ const Options: React.FC = () => {
   };
 
   return (
-    <Container maxWidth="md" sx={{ py: 4 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-        <IconButton
+    <PageContainer maxWidth="md">
+      <HeaderRow>
+        <BackButton
           onClick={() => navigate('/')}
-          sx={{ mr: 2 }}
           aria-label="Go back"
         >
           <ArrowBackIcon />
-        </IconButton>
+        </BackButton>
         <Typography variant="h4" component="h1" fontWeight="bold">
           Settings
         </Typography>
-      </Box>
+      </HeaderRow>
 
-      <Paper elevation={2} sx={{ p: 3 }}>
+      <SettingsCard elevation={2}>
         <Typography variant="h6" gutterBottom>
           General Configuration
         </Typography>
 
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 3 }}>
+        <FormStack>
           <FormControl fullWidth>
             <InputLabel id="schedule-label">Weekly Schedule</InputLabel>
             <Select
@@ -97,9 +131,9 @@ const Options: React.FC = () => {
             helperText="Free tier available with generous limits"
           />
 
-          <Alert severity="info" sx={{ mt: 1 }}>
+          <InfoAlert severity="info">
             Fallback order: OpenAI → Gemini → Heuristics. If both fail or are missing, keyword-based categorization will be used.
-          </Alert>
+          </InfoAlert>
 
           {saved && (
             <Alert severity="success">
@@ -107,7 +141,7 @@ const Options: React.FC = () => {
             </Alert>
           )}
 
-          <Box sx={{ mt: 2 }}>
+          <SaveRow>
             <Button
               variant="contained"
               onClick={handleSave}
@@ -115,10 +149,10 @@ const Options: React.FC = () => {
             >
               Save Settings
             </Button>
-          </Box>
-        </Box>
-      </Paper>
-    </Container>
+          </SaveRow>
+        </FormStack>
+      </SettingsCard>
+    </PageContainer>
   );
 };
 

@@ -1,8 +1,52 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Typography, Paper, TextField, InputAdornment, Chip, IconButton } from '@mui/material';
+import { styled } from '@mui/material/styles';
 import SearchIcon from '@mui/icons-material/Search';
 import CloseIcon from '@mui/icons-material/Close';
 import type { StoredNewsletter } from '../services';
+
+const PageRoot = styled(Box)`
+    display: flex;
+    flex-direction: column;
+    gap: ${({ theme }) => theme.spacing(2)};
+`;
+
+const FilterRow = styled(Box)`
+    display: flex;
+    gap: ${({ theme }) => theme.spacing(1)};
+    flex-wrap: wrap;
+`;
+
+const NewsletterList = styled(Box)`
+    display: flex;
+    flex-direction: column;
+    gap: ${({ theme }) => theme.spacing(2)};
+`;
+
+const NewsletterCard = styled(Paper)`
+    padding: ${({ theme }) => theme.spacing(2)};
+`;
+
+const CardHeader = styled(Box)`
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: ${({ theme }) => theme.spacing(0.5)};
+`;
+
+const SubjectText = styled(Typography)`
+    max-width: 75%;
+`;
+
+const SummaryText = styled(Typography)`
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+`;
+
+const EmptyText = styled(Typography)`
+    padding: ${({ theme }) => theme.spacing(4, 0)};
+`;
 
 const Collections: React.FC = () => {
     const [newsletters, setNewsletters] = useState<StoredNewsletter[]>([]);
@@ -27,7 +71,7 @@ const Collections: React.FC = () => {
     const categories = Array.from(new Set(newsletters.map(n => n.category)));
 
     return (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <PageRoot>
             <Typography variant="h5" component="h1" fontWeight="bold">
                 Collections
             </Typography>
@@ -55,7 +99,7 @@ const Collections: React.FC = () => {
             />
 
             {categories.length > 0 && (
-                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                <FilterRow>
                     <Chip
                         label="All"
                         size="small"
@@ -75,32 +119,32 @@ const Collections: React.FC = () => {
                             clickable
                         />
                     ))}
-                </Box>
+                </FilterRow>
             )}
 
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <NewsletterList>
                 {filteredNewsletters.map(newsletter => (
-                    <Paper key={newsletter.id} variant="outlined" sx={{ p: 2 }}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                            <Typography variant="subtitle2" fontWeight="bold" noWrap sx={{ maxWidth: '75%' }}>
+                    <NewsletterCard key={newsletter.id} variant="outlined">
+                        <CardHeader>
+                            <SubjectText variant="subtitle2" fontWeight="bold" noWrap>
                                 {newsletter.subject}
-                            </Typography>
+                            </SubjectText>
                             <Typography variant="caption" color="text.secondary">
                                 {new Date(newsletter.receivedDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                             </Typography>
-                        </Box>
-                        <Typography variant="body2" color="text.secondary" sx={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                        </CardHeader>
+                        <SummaryText variant="body2" color="text.secondary">
                             {newsletter.summary}
-                        </Typography>
-                    </Paper>
+                        </SummaryText>
+                    </NewsletterCard>
                 ))}
                 {filteredNewsletters.length === 0 && (
-                    <Typography variant="body2" color="text.secondary" align="center" sx={{ py: 4 }}>
+                    <EmptyText variant="body2" color="text.secondary" align="center">
                         No newsletters found.
-                    </Typography>
+                    </EmptyText>
                 )}
-            </Box>
-        </Box>
+            </NewsletterList>
+        </PageRoot>
     );
 };
 

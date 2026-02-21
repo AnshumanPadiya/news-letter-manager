@@ -1,5 +1,6 @@
 import React from 'react';
 import { Box, AppBar, Toolbar, Typography, IconButton, Tooltip } from '@mui/material';
+import { styled } from '@mui/material/styles';
 import { useNavigate, useLocation } from 'react-router-dom';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import ArchiveIcon from '@mui/icons-material/Archive';
@@ -13,6 +14,44 @@ import { useThemeContext } from '../context';
 interface LayoutProps {
     children: React.ReactNode;
 }
+
+const LayoutRoot = styled(Box)`
+    width: 100%;
+    min-height: 100vh;
+    background-color: ${({ theme }) => theme.palette.background.default};
+    color: ${({ theme }) => theme.palette.text.primary};
+    display: flex;
+    flex-direction: column;
+`;
+
+const StyledAppBar = styled(AppBar)`
+    background-color: ${({ theme }) => theme.palette.background.paper};
+    box-shadow: none;
+`;
+
+const TitleText = styled(Typography)`
+    flex-grow: 1;
+    color: ${({ theme }) => theme.palette.primary.main};
+    font-weight: bold;
+`;
+
+const ThemeToggleButton = styled(IconButton)`
+    color: ${({ theme }) => theme.palette.text.secondary};
+    margin-right: ${({ theme }) => theme.spacing(2)};
+`;
+
+const NavIconButton = styled(IconButton, {
+    shouldForwardProp: (prop) => prop !== 'active',
+})<{ active?: boolean }>`
+    color: ${({ active, theme }) =>
+        active ? theme.palette.primary.main : theme.palette.text.secondary};
+`;
+
+const ContentArea = styled(Box)`
+    padding: ${({ theme }) => theme.spacing(2)};
+    flex-grow: 1;
+    overflow-y: auto;
+`;
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
     const navigate = useNavigate();
@@ -36,68 +75,61 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     };
 
     return (
-        <Box sx={{
-            width: '100%',
-            minHeight: '100vh',
-            bgcolor: 'background.default',
-            color: 'text.primary',
-            display: 'flex',
-            flexDirection: 'column'
-        }}>
-            <AppBar position="static" sx={{ bgcolor: 'background.paper', boxShadow: 'none' }}>
+        <LayoutRoot>
+            <StyledAppBar position="static">
                 <Toolbar variant="dense">
-                    <Typography variant="h6" component="div" sx={{ flexGrow: 1, color: 'primary.main', fontWeight: 'bold' }}>
+                    <TitleText variant="h6">
                         Newsletter Manager
-                    </Typography>
+                    </TitleText>
 
                     <Tooltip title={`Theme: ${mode.charAt(0).toUpperCase() + mode.slice(1)}`}>
-                        <IconButton onClick={handleThemeToggle} sx={{ color: 'text.secondary', mr: 2 }}>
+                        <ThemeToggleButton onClick={handleThemeToggle}>
                             {getThemeIcon()}
-                        </IconButton>
+                        </ThemeToggleButton>
                     </Tooltip>
 
                     <Tooltip title="Dashboard">
-                        <IconButton
+                        <NavIconButton
                             onClick={() => navigate('/')}
-                            sx={{ color: isActive('/') ? 'primary.main' : 'text.secondary' }}
+                            active={isActive('/')}
                         >
                             <DashboardIcon />
-                        </IconButton>
+                        </NavIconButton>
                     </Tooltip>
 
                     <Tooltip title="Archive">
-                        <IconButton
+                        <NavIconButton
                             onClick={() => navigate('/archive')}
-                            sx={{ color: isActive('/archive') ? 'primary.main' : 'text.secondary' }}
+                            active={isActive('/archive')}
                         >
                             <ArchiveIcon />
-                        </IconButton>
+                        </NavIconButton>
                     </Tooltip>
 
                     <Tooltip title="Subscriptions">
-                        <IconButton
+                        <NavIconButton
                             onClick={() => navigate('/subscriptions')}
-                            sx={{ color: isActive('/subscriptions') ? 'primary.main' : 'text.secondary' }}
+                            active={isActive('/subscriptions')}
                         >
                             <UnsubscribeIcon />
-                        </IconButton>
+                        </NavIconButton>
                     </Tooltip>
 
                     <Tooltip title="Settings">
-                        <IconButton
+                        <NavIconButton
                             onClick={() => navigate('/settings')}
-                            sx={{ color: isActive('/settings') ? 'primary.main' : 'text.secondary' }}
+                            active={isActive('/settings')}
                         >
                             <SettingsIcon />
-                        </IconButton>
+                        </NavIconButton>
                     </Tooltip>
                 </Toolbar>
-            </AppBar>
+            </StyledAppBar>
 
-            <Box sx={{ p: 2, flexGrow: 1, overflowY: 'auto' }}>
+            <ContentArea>
                 {children}
-            </Box>
-        </Box>
+            </ContentArea>
+        </LayoutRoot>
     );
 };
 

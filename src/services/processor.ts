@@ -1,3 +1,4 @@
+import { type AppSettings } from './storage';
 import { GmailClient } from './gmail';
 import { LLMService, type BatchEmailData } from './llm';
 import type { IGmailMessage, IMessagePart } from '../types';
@@ -16,27 +17,85 @@ export interface ScoredNewsletter {
 }
 
 export class NewsletterProcessor {
-    static async fetchNewsletters(daysBack: number = 7, interactive: boolean = false): Promise<IGmailMessage[]> {
+    static isSensitive(subject: string, sender: string, body: string = ''): boolean {
+        const sensitiveKeywords = [
+            'password reset', 'verification code', 'verify your identity', 'security alert', 'login attempt',
+            'bank statement', 'account statment', 'transaction alert', 'payment confirmation', 'receipt',
+            'invoice', 'order confirmation', 'shipping update', 'delivery update', 'your order',
+            'reset your password', 'one-time passcode', 'otp', 'authentication', '2fa', 'mfa'
+        ];
+
+        const sensitiveDomains = [
+            'accounts.google.com', 'notify.stripe.com', 'paypal.com', 'venmo.com', 'cash.app',
+            'chase.com', 'bankofamerica.com', 'wellsfargo.com', 'citi.com', 'capitalone.com',
+            'amex.com', 'discover.com', 'fidelity.com', 'vanguard.com', 'schwab.com'
+        ];
+
+        const text = (subject + ' ' + sender + ' ' + body).toLowerCase();
+        
+        if (sensitiveKeywords.some(keyword => text.includes(keyword))) {
+            return true;
+        }
+
+        if (sensitiveDomains.some(domain => sender.toLowerCase().includes(domain))) {
+            return true;
+        }
+
+        return false;
+    }
+
+    static isMarketing(subject: string, sender: string, body: string): boolean {
+        const marketingKeywords = [
+            'sale', '% off', 'discount', 'shop now', 'limited time', 'offer',
+            'free shipping', 'get it now', 'last chance', 'price drop',
+            'exclusive access', 'new arrival', 'final hours', 'save big',
+            'buy one', 'promo code', 'coupon'
+        ];
+        
+        const newsletterKeywords = [
+            'newsletter', 'digest', 'weekly', 'edition', 'issue', 'roundup', 'briefing', 
+            'substack', 'linkedin.com/newsletters', 'daily', 'monthly'
+        ];
+
+        const text = (subject + ' ' + sender + ' ' + body).toLowerCase();
+
+        // If it looks like a newsletter, whitelist it (ignore marketing check)
+        if (newsletterKeywords.some(k => text.includes(k))) {
+            return false;
+        }
+
+        // If it has marketing keywords, classify as marketing
+        if (marketingKeywords.some(k => text.includes(k))) {
+            return true;
+        }
+
+        return false;
+    }
+
+    static async fetchNewsletters(daysBack: number = 7, maxEmails: number = 50, interactive: boolean = false): Promise<IGmailMessage[]> {
         const date = new Date();
         date.setDate(date.getDate() - daysBack);
         const afterDate = Math.floor(date.getTime() / 1000);
 
         const query = `category:promotions OR "unsubscribe" after:${afterDate}`;
 
-        const response = await GmailClient.listMessages(query, 50, undefined, interactive);
+        const response = await GmailClient.listMessages(query, maxEmails * 2, undefined, interactive); // Fetch more to allow for filtering
         if (!response.messages) return [];
 
         const messages: IGmailMessage[] = [];
         const BATCH_SIZE = 5;
 
-        for (let i = 0; i < response.messages.length; i += BATCH_SIZE) {
-            const batch = response.messages.slice(i, i + BATCH_SIZE);
+        // Limit processing to maxEmails or available messages
+        const messagesToProcess = response.messages.slice(0, maxEmails);
+
+        for (let i = 0; i < messagesToProcess.length; i += BATCH_SIZE) {
+            const batch = messagesToProcess.slice(i, i + BATCH_SIZE);
             const batchResults = await Promise.all(
                 batch.map(msg => GmailClient.getMessage(msg.id, interactive))
             );
             messages.push(...batchResults);
 
-            if (i + BATCH_SIZE < response.messages.length) {
+            if (i + BATCH_SIZE < messagesToProcess.length) {
                 await new Promise(resolve => setTimeout(resolve, 500));
             }
         }
@@ -44,6 +103,7 @@ export class NewsletterProcessor {
         return messages;
     }
 
+    // ... (extractBody, getHeader, simpleFallbackCategory remain the same) ...
     static extractBody(payload?: IMessagePart): string {
         if (!payload) return '';
 
@@ -80,13 +140,21 @@ export class NewsletterProcessor {
     static async scoreNewsletters(messages: IGmailMessage[]): Promise<ScoredNewsletter[]> {
         if (messages.length === 0) return [];
 
-        // Get both API keys
-        const storage = await chrome.storage.sync.get(['openaiApiKey', 'geminiApiKey']);
-        const openaiKey: string | undefined = storage.openaiApiKey as string | undefined;
-        const geminiKey: string | undefined = storage.geminiApiKey as string | undefined;
+        // Get settings
+        const storage = await chrome.storage.local.get(['settings']); // Access local storage for settings
+        // Fallback to sync for keys if not in local settings (migration support)
+        const syncStorage = await chrome.storage.sync.get(['openaiApiKey', 'geminiApiKey']);
+        
+        const settings = (storage.settings || {}) as AppSettings;
+        const whitelist: string[] = settings.whitelistedSenders || [];
+        const blacklist: string[] = settings.blacklistedSenders || [];
+        
+        const openaiKey: string | undefined = settings.openaiKey || (syncStorage.openaiApiKey as string);
+        const geminiKey: string | undefined = settings.geminiKey || (syncStorage.geminiApiKey as string);
+        
         console.log('API Keys - OpenAI:', !!openaiKey, '| Gemini:', !!geminiKey);
 
-        // Simple pre-filtering
+        // Pre-filtering with Rules & Sensitivity
         const candidates = messages
             .map(msg => {
                 const subject = this.getHeader(msg.payload?.headers || [], 'Subject');
@@ -96,17 +164,42 @@ export class NewsletterProcessor {
 
                 return { msg, subject, from, body, date };
             })
-            .filter(item => item.body.length > 200)
-            .slice(0, 20);
+            .filter(item => {
+                // 1. Check Blacklist
+                if (blacklist.some(blocked => item.from.toLowerCase().includes(blocked.toLowerCase()))) {
+                    console.log(`Blocked by blacklist: ${item.from}`);
+                    return false;
+                }
 
-        console.log(`Pre-filtered to ${candidates.length} candidates for AI analysis.`);
+                // 2. Check Sensitivity
+                if (this.isSensitive(item.subject, item.from, item.body.substring(0, 500))) {
+                    console.log(`Skipped sensitive email: ${item.subject} from ${item.from}`);
+                    return false;
+                }
+
+                // 3. Check Marketing/Promotional (New)
+                if (this.isMarketing(item.subject, item.from, item.body.substring(0, 500))) {
+                    console.log(`Skipped marketing email: ${item.subject} from ${item.from}`);
+                    return false;
+                }
+                
+                // 4. Length Check (keep existing logic)
+                return item.body.length > 200;
+            });
+            
+        // Prioritize Whitelist (Move to top or ensure they are kept)
+        // We will just mark them for potential boost later, but for now they are just in candidates.
+        
+        const limitedCandidates = candidates.slice(0, 20); // Keep top 20 after filtering
+
+        console.log(`Pre-filtered to ${limitedCandidates.length} candidates for AI analysis.`);
 
         const results: ScoredNewsletter[] = [];
 
         // AI Batch Processing with fallback
-        if ((openaiKey || geminiKey) && candidates.length > 0) {
+        if ((openaiKey || geminiKey) && limitedCandidates.length > 0) {
             try {
-                const batchInput: BatchEmailData[] = candidates.map(item => ({
+                const batchInput: BatchEmailData[] = limitedCandidates.map(item => ({
                     id: item.msg.id,
                     subject: item.subject,
                     body: item.body,
@@ -116,22 +209,27 @@ export class NewsletterProcessor {
                 console.log(`Sending ${batchInput.length} emails to AI for analysis...`);
                 const aiResults = await LLMService.analyzeBatch(batchInput, openaiKey, geminiKey);
                 console.log(`Received ${aiResults.length} AI results.`);
-                console.log('AI Results:', JSON.stringify(aiResults, null, 2));
 
                 const newsletterResults = aiResults.filter(r => r.isNewsletter === true);
-                console.log(`Filtered to ${newsletterResults.length} actual newsletters (excluded ${aiResults.length - newsletterResults.length} notifications).`);
-
-                if (newsletterResults.length === 0) {
-                    console.warn('⚠️ AI returned 0 newsletters! All emails were marked as non-newsletters.');
-                }
+                
+                // Check whitelist for forced inclusion? 
+                // If AI says "not newsletter" but it is in whitelist, we should probably include it anyway?
+                // For now, let's stick to AI's decision but maybe boost score if whitelisted.
 
                 for (const aiResult of newsletterResults) {
-                    const candidate = candidates.find(c => c.msg.id === aiResult.id);
+                    const candidate = limitedCandidates.find(c => c.msg.id === aiResult.id);
                     if (candidate) {
-                        console.log(`✅ Adding AI-scored newsletter: ${aiResult.summary} (score: ${aiResult.importanceScore})`);
+                        let score = aiResult.importanceScore;
+                        
+                        // Boost score for whitelisted senders
+                        if (whitelist.some(allowed => candidate.from.toLowerCase().includes(allowed.toLowerCase()))) {
+                            score = Math.min(10, score + 3);
+                        }
+
+                        console.log(`✅ Adding AI-scored newsletter: ${aiResult.summary} (score: ${score})`);
                         results.push({
                             message: candidate.msg,
-                            score: aiResult.importanceScore,
+                            score: score,
                             summary: aiResult.summary,
                             sender: candidate.from,
                             subject: candidate.subject,
@@ -142,21 +240,26 @@ export class NewsletterProcessor {
                     }
                 }
 
-                console.log(`Total AI-processed results: ${results.length}`);
-
             } catch (error) {
                 console.error('AI Batch Processing failed, falling back to heuristics:', error);
             }
         }
 
-        // Fallback - if AI failed or no API key
+        // Fallback - if AI failed or no API key OR if we want to ensure coverage
+        // Note: The original logic only ran fallback if results.length === 0.
+        // We might want to run fallback for items NOT processed by AI if we want to fill up to 10?
+        // For now, keeping original behavior: only run fallback if AI produced NOTHING.
+        
         if (results.length === 0) {
             console.log('Using fallback heuristic scoring.');
-            for (const item of candidates) {
+            for (const item of limitedCandidates) {
                 const lowerSubject = item.subject.toLowerCase();
                 const lowerFrom = item.from.toLowerCase();
 
-                // Filter out obvious notifications and transactional emails
+                // Whitelist check for explicit inclusion
+                const isWhitelisted = whitelist.some(allowed => lowerFrom.includes(allowed.toLowerCase()));
+
+                // Standard Notification checks
                 const isNotification =
                     lowerFrom.includes('discord') ||
                     lowerFrom.includes('netflix') ||
@@ -168,17 +271,15 @@ export class NewsletterProcessor {
                     lowerSubject.includes('statement of account') ||
                     lowerSubject.includes('credit card update') ||
                     lowerSubject.includes('new season alert') ||
-                    lowerSubject.includes('now streaming') ||
-                    lowerFrom.includes('bank') && !lowerSubject.includes('newsletter');
+                    lowerSubject.includes('now streaming');
 
-                // Skip notifications
-                if (isNotification) {
-                    console.log(`Filtered out notification: ${item.subject}`);
+                if (isNotification && !isWhitelisted) {
                     continue;
                 }
 
-                // Only include if it looks like a newsletter
+                // Heuristic Check
                 const looksLikeNewsletter =
+                    isWhitelisted || // Automatically looks like newsletter if whitelisted
                     lowerSubject.includes('newsletter') ||
                     lowerSubject.includes('digest') ||
                     lowerSubject.includes('weekly') ||
@@ -186,21 +287,20 @@ export class NewsletterProcessor {
                     lowerSubject.includes('issue') ||
                     lowerSubject.includes('wrap') ||
                     lowerSubject.includes('roundup') ||
-                    item.body.length > 2000; // Long emails are likely newsletters
+                    item.body.length > 2000;
 
                 if (!looksLikeNewsletter) {
-                    console.log(`Filtered out non-newsletter: ${item.subject}`);
                     continue;
                 }
 
                 let score = 5;
-
                 if (item.body.length > 2000) score += 2;
                 if (['weekly', 'digest', 'edition'].some(k => lowerSubject.includes(k))) score += 2;
+                if (isWhitelisted) score += 3; // Boost for whitelist
 
                 results.push({
                     message: item.msg,
-                    score,
+                    score: Math.min(10, score),
                     summary: item.subject,
                     sender: item.from,
                     subject: item.subject,

@@ -1,16 +1,28 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Typography, List, ListItem, ListItemText, ListItemSecondaryAction, IconButton, Tooltip, CircularProgress, Alert } from '@mui/material';
+import { styled } from '@mui/material/styles';
 import UnsubscribeIcon from '@mui/icons-material/Unsubscribe';
 import type { StoredNewsletter } from '../services';
+
+const PageRoot = styled(Box)`
+    display: flex;
+    flex-direction: column;
+    gap: ${({ theme }) => theme.spacing(3)};
+`;
+
+const CenteredLoader = styled(CircularProgress)`
+    align-self: center;
+`;
+
+const StyledList = styled(List)`
+    background-color: ${({ theme }) => theme.palette.background.paper};
+    border-radius: ${({ theme }) => theme.spacing(1)};
+`;
 
 const Subscriptions: React.FC = () => {
     const [senders, setSenders] = useState<{ sender: string, count: number, id: string }[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-
-    useEffect(() => {
-        loadSubscriptions();
-    }, []);
 
     const loadSubscriptions = () => {
         setLoading(true);
@@ -40,6 +52,10 @@ const Subscriptions: React.FC = () => {
         });
     };
 
+    useEffect(() => {
+        loadSubscriptions();
+    }, []);
+
     const handleUnsubscribe = (id: string, sender: string) => {
         if (!confirm(`Are you sure you want to unsubscribe from ${sender}?`)) return;
 
@@ -53,12 +69,12 @@ const Subscriptions: React.FC = () => {
     };
 
     return (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+        <PageRoot>
             <Typography variant="h5" color="text.primary">
                 Subscriptions
             </Typography>
 
-            {loading && <CircularProgress sx={{ alignSelf: 'center' }} />}
+            {loading && <CenteredLoader />}
             {error && <Alert severity="error">{error}</Alert>}
 
             {!loading && !error && senders.length === 0 && (
@@ -67,7 +83,7 @@ const Subscriptions: React.FC = () => {
                 </Typography>
             )}
 
-            <List sx={{ bgcolor: 'background.paper', borderRadius: 1 }}>
+            <StyledList>
                 {senders.map((item, index) => (
                     <ListItem key={index} divider={index < senders.length - 1}>
                         <ListItemText
@@ -96,8 +112,8 @@ const Subscriptions: React.FC = () => {
                         </ListItemSecondaryAction>
                     </ListItem>
                 ))}
-            </List>
-        </Box>
+            </StyledList>
+        </PageRoot>
     );
 };
 

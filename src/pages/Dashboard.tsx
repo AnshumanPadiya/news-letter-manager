@@ -1,9 +1,91 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Typography, Paper, Button, Chip, Alert, CircularProgress } from '@mui/material';
+import { styled } from '@mui/material/styles';
 import UnsubscribeIcon from '@mui/icons-material/Unsubscribe';
 import ArchiveIcon from '@mui/icons-material/Archive';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import type { StoredNewsletter, AppSettings } from '../services';
+
+const PageRoot = styled(Box)`
+    display: flex;
+    flex-direction: column;
+    gap: ${({ theme }) => theme.spacing(3)};
+`;
+
+const StatsGrid = styled(Box)`
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: ${({ theme }) => theme.spacing(2)};
+`;
+
+const StatCard = styled(Paper)`
+    padding: ${({ theme }) => theme.spacing(2)};
+    background-color: ${({ theme }) => theme.palette.background.paper};
+    color: ${({ theme }) => theme.palette.text.primary};
+`;
+
+const ArchivingAlert = styled(Alert)`
+    background-color: ${({ theme }) => theme.palette.background.paper};
+    color: ${({ theme }) => theme.palette.text.primary};
+
+    & .MuiAlert-icon {
+        color: ${({ theme }) => theme.palette.primary.main};
+    }
+`;
+
+const RunButton = styled(Button)`
+    background-color: ${({ theme }) => theme.palette.primary.main};
+    color: ${({ theme }) => theme.palette.background.default};
+
+    &:hover {
+        background-color: ${({ theme }) => theme.palette.primary.dark};
+        color: #fff;
+    }
+`;
+
+const SectionTitle = styled(Typography)`
+    margin-bottom: ${({ theme }) => theme.spacing(2)};
+    color: ${({ theme }) => theme.palette.text.primary};
+`;
+
+const NewsletterList = styled(Box)`
+    display: flex;
+    flex-direction: column;
+    gap: ${({ theme }) => theme.spacing(2)};
+`;
+
+const NewsletterCard = styled(Paper)`
+    padding: ${({ theme }) => theme.spacing(2)};
+    background-color: ${({ theme }) => theme.palette.background.paper};
+    color: ${({ theme }) => theme.palette.text.primary};
+`;
+
+const CardHeader = styled(Box)`
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: ${({ theme }) => theme.spacing(1)};
+`;
+
+const CategoryChip = styled(Chip)`
+    background-color: ${({ theme }) => theme.palette.action.hover};
+    color: ${({ theme }) => theme.palette.primary.main};
+`;
+
+const SummaryText = styled(Typography)`
+    color: ${({ theme }) => theme.palette.text.secondary};
+    margin-bottom: ${({ theme }) => theme.spacing(2)};
+`;
+
+const CardActions = styled(Box)`
+    display: flex;
+    gap: ${({ theme }) => theme.spacing(1)};
+    justify-content: flex-end;
+`;
+
+const ArchiveButton = styled(Button)`
+    color: ${({ theme }) => theme.palette.primary.main};
+`;
 
 const Dashboard: React.FC = () => {
     const [newsletters, setNewsletters] = useState<StoredNewsletter[]>([]);
@@ -67,77 +149,71 @@ const Dashboard: React.FC = () => {
     };
 
     return (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+        <PageRoot>
             {/* Stats Overview */}
-            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-                <Paper sx={{ p: 2, bgcolor: 'background.paper', color: 'text.primary' }}>
+            <StatsGrid>
+                <StatCard>
                     <Typography variant="h4" color="primary.main" fontWeight="bold">
                         {stats.total}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
                         Newsletters Processed
                     </Typography>
-                </Paper>
-                <Paper sx={{ p: 2, bgcolor: 'background.paper', color: 'text.primary' }}>
+                </StatCard>
+                <StatCard>
                     <Typography variant="h4" color="secondary.main" fontWeight="bold">
                         {stats.savedTime}m
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
                         Time Saved
                     </Typography>
-                </Paper>
-            </Box>
+                </StatCard>
+            </StatsGrid>
 
             {/* Archiving Prompt */}
             {settings && !settings.archiveSettings.enableArchiving && (
-                <Alert severity="info" sx={{ bgcolor: 'background.paper', color: 'text.primary', '& .MuiAlert-icon': { color: 'primary.main' } }}>
+                <ArchivingAlert severity="info">
                     Want to keep your inbox clean? Enable auto-archiving in Settings.
-                </Alert>
+                </ArchivingAlert>
             )}
 
             {/* Actions */}
-            <Button
+            <RunButton
                 variant="contained"
                 startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <PlayArrowIcon />}
                 onClick={handleRunNow}
                 disabled={loading}
-                sx={{
-                    bgcolor: 'primary.main',
-                    color: 'background.default',
-                    '&:hover': { bgcolor: 'primary.dark', color: '#fff' }
-                }}
             >
                 {loading ? 'Analyzing...' : 'Run Analysis Now'}
-            </Button>
+            </RunButton>
 
             {/* Recent Newsletters */}
             <Box>
-                <Typography variant="h6" sx={{ mb: 2, color: 'text.primary' }}>
+                <SectionTitle variant="h6">
                     Latest Reads
-                </Typography>
+                </SectionTitle>
 
                 {newsletters.length === 0 ? (
                     <Typography color="text.secondary" align="center">
                         No new newsletters found.
                     </Typography>
                 ) : (
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <NewsletterList>
                         {newsletters.slice(0, 5).map(newsletter => (
-                            <Paper key={newsletter.id} sx={{ p: 2, bgcolor: 'background.paper', color: 'text.primary' }}>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                                    <Typography variant="subtitle1" fontWeight="bold" sx={{ color: 'text.primary' }}>
+                            <NewsletterCard key={newsletter.id}>
+                                <CardHeader>
+                                    <Typography variant="subtitle1" fontWeight="bold" color="text.primary">
                                         {newsletter.subject}
                                     </Typography>
-                                    <Chip
+                                    <CategoryChip
                                         label={newsletter.category}
                                         size="small"
-                                        sx={{ bgcolor: 'action.hover', color: 'primary.main' }}
                                     />
-                                </Box>
-                                <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
+                                </CardHeader>
+                                <SummaryText variant="body2">
                                     {newsletter.summary}
-                                </Typography>
-                                <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                                </SummaryText>
+                                <CardActions>
                                     <Button
                                         size="small"
                                         startIcon={<UnsubscribeIcon />}
@@ -146,21 +222,20 @@ const Dashboard: React.FC = () => {
                                     >
                                         Unsubscribe
                                     </Button>
-                                    <Button
+                                    <ArchiveButton
                                         size="small"
                                         startIcon={<ArchiveIcon />}
                                         onClick={() => handleArchive(newsletter.id)}
-                                        sx={{ color: 'primary.main' }}
                                     >
                                         Archive
-                                    </Button>
-                                </Box>
-                            </Paper>
+                                    </ArchiveButton>
+                                </CardActions>
+                            </NewsletterCard>
                         ))}
-                    </Box>
+                    </NewsletterList>
                 )}
             </Box>
-        </Box>
+        </PageRoot>
     );
 };
 

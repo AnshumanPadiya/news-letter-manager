@@ -9,9 +9,63 @@ import {
     Link,
     Chip
 } from '@mui/material';
+import { styled } from '@mui/material/styles';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SettingsIcon from '@mui/icons-material/Settings';
+
+const PopupRoot = styled(Box)`
+    width: 100%;
+    height: 100%;
+    padding: ${({ theme }) => theme.spacing(3)};
+    background-color: ${({ theme }) => theme.palette.background.default};
+`;
+
+const StatusCard = styled(Paper)`
+    padding: ${({ theme }) => theme.spacing(2.5)};
+    margin-bottom: ${({ theme }) => theme.spacing(2)};
+`;
+
+const InfoRow = styled(Box)`
+    margin-bottom: ${({ theme }) => theme.spacing(2)};
+`;
+
+const StatusRow = styled(Box)`
+    margin-bottom: ${({ theme }) => theme.spacing(2.5)};
+`;
+
+const StatusLabel = styled(Typography)`
+    display: inline;
+`;
+
+const StyledAlert = styled(Alert)`
+    margin-bottom: ${({ theme }) => theme.spacing(2)};
+`;
+
+const ButtonStack = styled(Box)`
+    display: flex;
+    flex-direction: column;
+    gap: ${({ theme }) => theme.spacing(1.5)};
+`;
+
+const ActionButton = styled(Button)`
+    justify-content: center;
+
+    & .MuiButton-endIcon {
+        position: absolute;
+        right: 16px;
+    }
+`;
+
+const SettingsLinkBox = styled(Box)`
+    text-align: center;
+`;
+
+const SettingsLink = styled(Link)`
+    display: inline-flex;
+    align-items: center;
+    gap: ${({ theme }) => theme.spacing(0.5)};
+`;
 
 const Popup: React.FC = () => {
     const [status, setStatus] = useState<'idle' | 'running' | 'success' | 'error'>('idle');
@@ -54,7 +108,7 @@ const Popup: React.FC = () => {
                 setStatus('error');
                 setErrorMessage(response.error || 'Unknown error occurred');
             }
-        } catch (error) {
+        } catch {
             setStatus('error');
             setErrorMessage('Failed to communicate with background script');
         }
@@ -73,7 +127,7 @@ const Popup: React.FC = () => {
             } else {
                 setStatus('error');
             }
-        } catch (error) {
+        } catch {
             setStatus('error');
         }
     };
@@ -97,93 +151,79 @@ const Popup: React.FC = () => {
     };
 
     return (
-        <Box sx={{ width: '100%', height: '100%', p: 3, bgcolor: 'background.default' }}>
+        <PopupRoot>
             <Typography variant="h5" component="h1" gutterBottom fontWeight="bold" color="primary">
                 Newsletter Manager
             </Typography>
 
-            <Paper elevation={2} sx={{ p: 2.5, mb: 2 }}>
-                <Box sx={{ mb: 2 }}>
+            <StatusCard elevation={2}>
+                <InfoRow>
                     <Typography variant="body2" color="text.secondary">
                         Next Run:{' '}
                         <Typography component="span" variant="body2" fontWeight="medium" color="text.primary">
                             {nextRun}
                         </Typography>
                     </Typography>
-                </Box>
+                </InfoRow>
 
-                <Box sx={{ mb: 2.5 }}>
-                    <Typography variant="body2" color="text.secondary" sx={{ display: 'inline' }}>
+                <StatusRow>
+                    <StatusLabel variant="body2" color="text.secondary">
                         Status:{' '}
-                    </Typography>
+                    </StatusLabel>
                     <Chip
                         label={getStatusLabel()}
                         color={getStatusColor()}
                         size="small"
                         icon={status === 'running' ? <CircularProgress size={14} color="inherit" /> : undefined}
                     />
-                </Box>
+                </StatusRow>
 
                 {status === 'error' && errorMessage && (
-                    <Alert severity="error" sx={{ mb: 2 }}>
+                    <StyledAlert severity="error">
                         {errorMessage}
-                    </Alert>
+                    </StyledAlert>
                 )}
 
                 {status === 'success' && (
-                    <Alert severity="success" sx={{ mb: 2 }}>
+                    <StyledAlert severity="success">
                         Analysis complete! Check your email for the digest.
-                    </Alert>
+                    </StyledAlert>
                 )}
 
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                    <Button
+                <ButtonStack>
+                    <ActionButton
                         variant="contained"
                         onClick={handleRunNow}
                         disabled={status === 'running'}
                         endIcon={status === 'running' ? <CircularProgress size={20} color="inherit" /> : <PlayArrowIcon />}
                         fullWidth
                         size="large"
-                        sx={{
-                            justifyContent: 'center',
-                            '& .MuiButton-endIcon': {
-                                position: 'absolute',
-                                right: 16
-                            }
-                        }}
                     >
                         {status === 'running' ? 'Analyzing...' : 'Run Analysis Now'}
-                    </Button>
+                    </ActionButton>
 
                     {pendingCleanup > 0 && (
-                        <Button
+                        <ActionButton
                             variant="contained"
                             color="error"
                             onClick={handleCleanup}
                             disabled={status === 'running'}
                             endIcon={<DeleteIcon />}
                             fullWidth
-                            sx={{
-                                justifyContent: 'center',
-                                '& .MuiButton-endIcon': {
-                                    position: 'absolute',
-                                    right: 16
-                                }
-                            }}
                         >
                             Cleanup {pendingCleanup} Emails
-                        </Button>
+                        </ActionButton>
                     )}
-                </Box>
-            </Paper>
+                </ButtonStack>
+            </StatusCard>
 
-            <Box sx={{ textAlign: 'center' }}>
-                <Link href="#/options" underline="hover" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
+            <SettingsLinkBox>
+                <SettingsLink href="#/options" underline="hover">
                     <SettingsIcon fontSize="small" />
                     Settings
-                </Link>
-            </Box>
-        </Box>
+                </SettingsLink>
+            </SettingsLinkBox>
+        </PopupRoot>
     );
 };
 
